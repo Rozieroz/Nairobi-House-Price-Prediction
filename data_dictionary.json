@@ -1,0 +1,50 @@
+[
+  {
+    "Column Name":"Title",
+    "Description":"Name of property listing",
+    "Data Type":"String",
+    "Example":"5 Bed Townhouse with En Suite in Nyali Area"
+  },
+  {
+    "Column Name":"Price",
+    "Description":"Listed price",
+    "Data Type":"String \/ Numeric",
+    "Example":"KSh 29,500,000"
+  },
+  {
+    "Column Name":"Location",
+    "Description":"Property location",
+    "Data Type":"String",
+    "Example":"Nyali Area, Nyali"
+  },
+  {
+    "Column Name":"Bedrooms",
+    "Description":"Number of bedrooms",
+    "Data Type":"String \/ Int",
+    "Example":"5 Bedrooms"
+  },
+  {
+    "Column Name":"Bathrooms",
+    "Description":"Number of bathrooms",
+    "Data Type":"String \/ Int",
+    "Example":"5 Bathrooms"
+  },
+  {
+    "Column Name":"Amenities",
+    "Description":"Internal & external features",
+    "Data Type":"String (comma-separated)",
+    "Example":"Aircon, Alarm, Backup Generator"
+  },
+  {
+    "Column Name":"Surroundings",
+    "Description":"Nearby facilities \/ landmarks",
+    "Data Type":"String (comma-separated)",
+    "Example":"Bus Stop, Golf Course, Hospital"
+  },
+  {
+    "Column Name":"Created At",
+    "Description":"Date listing was created",
+    "Data Type":"Date \/ String",
+    "Example":"09 February 2026"
+  }
+]
