@@ -6,6 +6,12 @@
     "Example":"5 Bed Townhouse with En Suite in Nyali Area"
   },
   {
+    "Column Name":"Property Type",
+    "Description":"Type of property (apartment, townhouse, etc.)",
+    "Data Type":"String",
+    "Example":"Townhouse"
+  },
+  {
     "Column Name":"Price",
     "Description":"Listed price",
     "Data Type":"String \/ Numeric",
@@ -30,15 +36,21 @@
     "Example":"5 Bathrooms"
   },
   {
+    "Column Name":"Size",
+    "Description":"Property size with unit",
+    "Data Type":"String",
+    "Example":"250 m\u00b2"
+  },
+  {
     "Column Name":"Amenities",
     "Description":"Internal & external features",
-    "Data Type":"String (comma-separated)",
+    "Data Type":"List (comma-separated in CSV)",
     "Example":"Aircon, Alarm, Backup Generator"
   },
   {
     "Column Name":"Surroundings",
     "Description":"Nearby facilities \/ landmarks",
-    "Data Type":"String (comma-separated)",
+    "Data Type":"List (comma-separated in CSV)",
     "Example":"Bus Stop, Golf Course, Hospital"
   },
   {
@@ -46,5 +58,11 @@
     "Description":"Date listing was created",
     "Data Type":"Date \/ String",
     "Example":"09 February 2026"
+  },
+  {
+    "Column Name":"URL",
+    "Description":"Link to the property page",
+    "Data Type":"String",
+    "Example":"https:\/\/www.buyrentkenya.com\/..."
   }
 ]
