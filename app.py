@@ -93,7 +93,7 @@ if submitted:
 
     # ------------------------------
     # Display results
-    # ------------------------------
+
     st.success("### Prediction Results")
     st.metric("Estimated Price", f"KSh {pred_ksh:,.0f}")
 
