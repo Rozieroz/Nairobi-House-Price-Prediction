@@ -46,7 +46,7 @@ The model was trained on **359 recent listings** from **BuyRentKenya**.
 
 # ------------------------------
 # Input form
-# ------------------------------
+
 with st.form("input_form"):
     st.subheader("Property Details")
 
@@ -64,9 +64,9 @@ with st.form("input_form"):
 
 # ------------------------------
 # When the form is submitted
-# ------------------------------
+
 if submitted:
-    # Build the feature vector
+    # Build feature vector
     features = []
     features.append(size)
     features.append(bedrooms)
