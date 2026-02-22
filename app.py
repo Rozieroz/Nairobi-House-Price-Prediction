@@ -17,7 +17,7 @@ st.set_page_config(
 # ------------------------------
 @st.cache_resource
 def load_model():
-    return joblib.load('models/linear_regression_model.pkl')
+    return joblib.load('models/xgboost_model.pkl')
 
 model = load_model()
 
@@ -89,7 +89,7 @@ if submitted:
     pred_ksh = pred_millions * 1_000_000
 
     # MAE from test set (18.01M KSh) – load from saved metric
-    mae_millions = joblib.load('models/linear_regression_mae.pkl')
+    mae_millions = joblib.load('/models/xgboost_mae.pkl')
     lower_bound = pred_ksh - mae_millions * 1_000_000
     upper_bound = pred_ksh + mae_millions * 1_000_000
 
