@@ -77,8 +77,8 @@ if submitted:
     for loc in top_locations:
         features.append(1 if location == loc else 0)
 
-    # Convert to numpy array and reshape for prediction
-    X_input = np.array(features).reshape(1, -1)
+    # Convert to DataFrame for model input
+    X_input = pd.DataFrame([features], columns=feature_cols)
 
     # Predict
     first_pred = model.predict(X_input)[0]
@@ -89,7 +89,7 @@ if submitted:
     pred_ksh = pred_millions * 1_000_000
 
     # MAE from test set (18.01M KSh) – load from saved metric
-    mae_millions = joblib.load('/models/xgboost_mae.pkl')
+    mae_millions = joblib.load('models/xgboost_mae.pkl')
     lower_bound = pred_ksh - mae_millions * 1_000_000
     upper_bound = pred_ksh + mae_millions * 1_000_000
 
@@ -100,7 +100,11 @@ if submitted:
     st.metric("Estimated Price", f"KSh {pred_ksh:,.0f}")
 
     st.info(f"**Typical error range:** KSh {lower_bound:,.0f} – {upper_bound:,.0f}")
-    st.caption("The range is based on the model's Mean Absolute Error (MAE) of 18.01M KSh. About 68% of predictions fall within this range.")
+    st.caption(
+        f"The range is based on the model's Mean Absolute Error (MAE) of "
+        f"{mae_millions:.2f}M KSh on the test set."
+    )
+
 
     # ------------------------------
     # Explanation of drivers
@@ -112,15 +116,16 @@ if submitted:
     - **Size** contributes about **46,000 KSh per square meter**.
     - The number of **amenities** had negligible impact in this dataset – quality over quantity!
     """)
-
-    # Optionally show coefficients table
-    with st.expander("Show detailed coefficients"):
-        coef_data = {
-            'Feature': ['Intercept'] + feature_cols,
-            'Coefficient (M KSh)': [model.intercept_] + list(model.coef_)
-        }
-        coef_df = pd.DataFrame(coef_data).sort_values('Coefficient (M KSh)', ascending=False)
-        st.dataframe(coef_df)
+    
+    # Show feature importances
+    importances = model.feature_importances_
+    feature_importance_df = pd.DataFrame({
+        'Feature': feature_cols,
+        'Importance': importances
+    }).sort_values('Importance', ascending=False)
+    
+    st.write("Feature Importance (XGBoost Model):")
+    st.dataframe(feature_importance_df)
 
 # ------------------------------
 # Footer with disclaimer
