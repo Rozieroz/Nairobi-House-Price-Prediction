@@ -81,7 +81,9 @@ if submitted:
     X_input = np.array(features).reshape(1, -1)
 
     # Predict
-    pred_millions = model.predict(X_input)[0]
+    first_pred = model.predict(X_input)[0]
+    # inverse of log transform- had to log transform target during training for better performance,need to reverse it here to get actual price in millions.
+    pred_millions = np.exp(first_pred)   
 
     # Convert to KSh (multiply by 1,000,000)
     pred_ksh = pred_millions * 1_000_000

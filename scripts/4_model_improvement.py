@@ -35,7 +35,7 @@ for loc in top_locs:
 
 feature_cols = ['Size_SQM', 'Bedrooms_Num', 'Bathrooms_Num', 'Amenity_Count'] + [f'Loc_{loc}' for loc in top_locs]
 X = df[feature_cols].fillna(0)
-y = df['Price_Millions']
+y = np.log(df['Price_Millions'])    # log will transform target for better modeling 
 
 print("Feature matrix shape:", X.shape)
 
