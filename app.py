@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+import os
 
 # ------------------------------
 # Page configuration
@@ -12,19 +13,10 @@ st.set_page_config(
     layout="centered"
 )
 
-# ------------------------------
-# Load the trained model
-# ------------------------------
-@st.cache_resource
-def load_model():
-    return joblib.load('models/xgboost_model.pkl')
-
-model = load_model()
-
 
 # ------------------------------
 # Define the features (must match training)
-# ------------------------------
+
 top_locations = [
     'Lavington', 'Kitengela', 'Ruiru', 'Runda', 'Karen',
     'Kiambu Road', 'Kileleshwa', 'Ngong', 'Loresho', 'Ongata Rongai'
@@ -34,6 +26,34 @@ top_locations = [
 feature_cols = [
     'Size_SQM', 'Bedrooms_Num', 'Bathrooms_Num', 'Amenity_Count'
 ] + [f'Loc_{loc}' for loc in top_locations]
+
+
+# Paths to saved artifacts
+MODEL_PATH = 'models/xgboost_model.pkl'
+MAE_PATH = 'models/xgboost_mae.pkl'
+
+# ------------------------------
+# Load model and MAE with caching
+# ------------------------------
+@st.cache_resource
+def load_model():
+    """Load the trained XGBoost model."""
+    if not os.path.exists(MODEL_PATH):
+        st.error(f"Model file not found at {MODEL_PATH}. Please train the model first.")
+        st.stop()
+    return joblib.load(MODEL_PATH)
+
+@st.cache_resource
+def load_mae():
+    """Load the saved Mean Absolute Error (in millions KSh)."""
+    if not os.path.exists(MAE_PATH):
+        st.error(f"MAE file not found at {MAE_PATH}. Please run model training first.")
+        st.stop()
+    return joblib.load(MAE_PATH)
+
+model = load_model()
+mae_millions = load_mae()   # e.g., 15.21
+
 
 # ------------------------------
 # Title and description
@@ -58,7 +78,8 @@ with st.form("input_form"):
         bathrooms = st.number_input("Bathrooms", min_value=1, max_value=10, value=2, step=1)
         amenity_count = st.number_input("Number of Amenities", min_value=0, max_value=20, value=3, step=1)
 
-    location = st.selectbox("Location", options=["Other"] + top_locations)
+    location = st.selectbox("Location", options=["Other"] + top_locations,
+                            help="Select the location of the property. 'Other' is for locations not in the top 10.")
 
     submitted = st.form_submit_button("Predict Price")
 
@@ -66,12 +87,8 @@ with st.form("input_form"):
 # When the form is submitted
 
 if submitted:
-    # Build feature vector
-    features = []
-    features.append(size)
-    features.append(bedrooms)
-    features.append(bathrooms)
-    features.append(amenity_count)
+    # Build feature vector in the exact order
+    features = [size, bedrooms, bathrooms, amenity_count]
 
     # Add location dummies (all 0, then set the selected one to 1 if it's in top_locations)
     for loc in top_locations:
@@ -80,58 +97,78 @@ if submitted:
     # Convert to DataFrame for model input
     X_input = pd.DataFrame([features], columns=feature_cols)
 
-    # Predict
-    first_pred = model.predict(X_input)[0]
-    # inverse of log transform- had to log transform target during training for better performance,need to reverse it here to get actual price in millions.
-    pred_millions = np.exp(first_pred)   
+    # Predict (model predicts log(price))
 
-    # Convert to KSh (multiply by 1,000,000)
-    pred_ksh = pred_millions * 1_000_000
+    try:
+        first_pred = model.predict(X_input)[0]
+        # inverse of log transform- had to log transform target during training for better performance,need to reverse it here to get actual price in millions.
+        pred_millions = np.exp(first_pred)   
 
-    # MAE from test set (18.01M KSh) – load from saved metric
-    mae_millions = joblib.load('models/xgboost_mae.pkl')
-    lower_bound = pred_ksh - mae_millions * 1_000_000
-    upper_bound = pred_ksh + mae_millions * 1_000_000
+        # Convert to KSh (multiply by 1,000,000)
+        pred_ksh = pred_millions * 1_000_000
+    except Exception as e:
+        st.error(f"Prediction error: {e}")
+        st.stop()
+
+    # Calculate confidence interval using MAE
+    lower_millions = pred_millions - mae_millions
+    upper_millions = pred_millions + mae_millions
+    lower_ksh = lower_millions * 1_000_000
+    upper_ksh = upper_millions * 1_000_000
 
     # ------------------------------
     # Display results
+    # ------------------------------
+    st.success("### 📊 Prediction Results")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Estimated Price", f"KSh {pred_ksh:,.0f}")
+    with col2:
+        st.metric("Lower Bound", f"KSh {lower_ksh:,.0f}")
+    with col3:
+        st.metric("Upper Bound", f"KSh {upper_ksh:,.0f}")
 
-    st.success("### Prediction Results")
-    st.metric("Estimated Price", f"KSh {pred_ksh:,.0f}")
-
-    st.info(f"**Typical error range:** KSh {lower_bound:,.0f} – {upper_bound:,.0f}")
     st.caption(
         f"The range is based on the model's Mean Absolute Error (MAE) of "
-        f"{mae_millions:.2f}M KSh on the test set."
+        f"**{mae_millions:.2f}M KSh** on the test set. About 68% of predictions fall within this interval."
     )
 
-
     # ------------------------------
-    # Explanation of drivers
+    # What drives the price? (using XGBoost feature importance)
     # ------------------------------
-    st.subheader("What drives this price?")
-    st.markdown("""
-    - **Location** is the biggest factor: being in Karen adds ~68M, while areas like Ongata Rongai subtract ~22M compared to an average location.
-    - Each **bedroom** adds about **7.5M**, each **bathroom** about **6.7M**.
-    - **Size** contributes about **46,000 KSh per square meter**.
-    - The number of **amenities** had negligible impact in this dataset – quality over quantity!
-    """)
-    
-    # Show feature importances
+    st.subheader("🔍 What Drives This Price?")
     importances = model.feature_importances_
-    feature_importance_df = pd.DataFrame({
+    imp_df = pd.DataFrame({
         'Feature': feature_cols,
         'Importance': importances
-    }).sort_values('Importance', ascending=False)
-    
-    st.write("Feature Importance (XGBoost Model):")
-    st.dataframe(feature_importance_df)
+    }).sort_values('Importance', ascending=False).head(8)
+
+    st.write("**Top 8 most influential features (XGBoost):**")
+    st.dataframe(imp_df, use_container_width=True)
+
+    st.markdown("""
+    - **Location** dominates: Loresho, Karen, Runda, Lavington are the strongest price drivers.
+    - **Size and number of bathrooms** also matter significantly.
+    - **Amenity count** had near‑zero importance – quality over quantity!
+    """)
+
+    # Optional: simple note about the data
+    with st.expander("ℹ️ About the data & model"):
+        st.markdown(f"""
+        - **Training data:** 359 listings scraped from BuyRentKenya.
+        - **Model:** XGBoost with log‑transformed target (to handle skewed prices).
+        - **Performance:**  
+          - MAE: {mae_millions:.2f}M KSh  
+          - RMSE: 26.58M KSh  
+          - R²: 0.729  
+        - **Locations:** The top 10 most frequent areas were used as dummy variables; all others fall under "Other".
+        """)
 
 # ------------------------------
-# Footer with disclaimer
+# Footer
 # ------------------------------
 st.markdown("---")
 st.caption("""
-**Disclaimer:** This is a prototype model built with limited data (359 listings). 
-Predictions should be used as a rough guide only. Always consult a local real estate professional.
+**Disclaimer:** This is a prototype built with a small dataset. Predictions are estimates only.
+Always consult a local real estate professional before making financial decisions.
 """)
