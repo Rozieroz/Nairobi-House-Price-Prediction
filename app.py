@@ -6,7 +6,7 @@ import os
 
 # ------------------------------
 # Page configuration
-# ------------------------------
+
 st.set_page_config(
     page_title="Nairobi House Price Predictor",
     page_icon="🏠",
@@ -34,7 +34,7 @@ MAE_PATH = 'models/xgboost_mae.pkl'
 
 # ------------------------------
 # Load model and MAE with caching
-# ------------------------------
+
 @st.cache_resource
 def load_model():
     """Load the trained XGBoost model."""
@@ -57,7 +57,7 @@ mae_millions = load_mae()   # e.g., 15.21
 
 # ------------------------------
 # Title and description
-# ------------------------------
+
 st.title("Nairobi House Price Predictor")
 st.markdown("""
 This app estimates the price of a house in Nairobi based on its characteristics.
@@ -118,7 +118,7 @@ if submitted:
 
     # ------------------------------
     # Display results
-    # ------------------------------
+
     st.success("###Prediction Results: ")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -135,7 +135,7 @@ if submitted:
 
     # ------------------------------
     # What drives the price? (using XGBoost feature importance)
-    # ------------------------------
+
     st.subheader("What Drives This Price?")
     importances = model.feature_importances_
     imp_df = pd.DataFrame({
@@ -166,7 +166,7 @@ if submitted:
 
 # ------------------------------
 # Footer
-# ------------------------------
+# 
 st.markdown("---")
 st.caption("""
 **Disclaimer:** This is a prototype built with a small dataset. Predictions are estimates only.
