@@ -152,17 +152,117 @@ if submitted:
     - **Amenity count** had near‑zero importance – quality over quantity!
     """)
 
-    # Optional: simple note about the data
-    with st.expander("ℹ About the data & model"):
-        st.markdown(f"""
-        - **Training data:** 359 listings scraped from BuyRentKenya.
-        - **Model:** XGBoost with log‑transformed target (to handle skewed prices).
-        - **Performance:**  
-          - MAE: {mae_millions:.2f}M KSh  
-          - RMSE: 26.58M KSh  
-          - R²: 0.729  
-        - **Locations:** The top 10 most frequent areas were used as dummy variables; all others fall under "Other".
+    
+    
+# MARKET DASHBOARD PAGE
+# ------------------------------
+elif page == "📊 Market Dashboard":
+    st.title("📊 Nairobi Property Market Dashboard")
+    st.markdown("Explore key trends and insights from the dataset of **{} listings**.".format(len(df)))
+
+    # Ensure necessary columns exist
+    required_cols = ['Location', 'Price_Millions', 'Size_SQM']
+    if not all(col in df.columns for col in required_cols):
+        st.error("Dashboard requires columns: Location, Price_Millions, Size_SQM")
+        st.stop()
+
+    # ---------- 1. Median price by location ----------
+    st.subheader("🏘️ Median Price by Location")
+    loc_median = df.groupby('Location')['Price_Millions'].median().sort_values(ascending=False).head(15)
+    fig, ax = plt.subplots(figsize=(10,6))
+    loc_median.plot(kind='bar', ax=ax, color='skyblue', edgecolor='black')
+    ax.set_ylabel("Median Price (Millions KSh)")
+    ax.set_title("Top 15 Locations by Median Price")
+    plt.xticks(rotation=45, ha='right')
+    st.pyplot(fig)
+    st.caption("The most expensive areas are Karen, Runda, Lavington, Loresho, etc.")
+
+    # ---------- 2. Price per sqm by location ----------
+    st.subheader("📏 Price per Square Meter by Location")
+    df['Price_per_SQM'] = df['Price_Millions'] / df['Size_SQM'] * 1_000_000  # KSh per sqm
+    ppsqm_median = df.groupby('Location')['Price_per_SQM'].median().sort_values(ascending=False).head(15)
+    fig2, ax2 = plt.subplots(figsize=(10,6))
+    ppsqm_median.plot(kind='bar', ax=ax2, color='lightgreen', edgecolor='black')
+    ax2.set_ylabel("Median Price per sqm (KSh)")
+    ax2.set_title("Top 15 Locations by Price per sqm")
+    plt.xticks(rotation=45, ha='right')
+    st.pyplot(fig2)
+    st.caption("Price per sqm normalises by size – shows which areas offer best value for space.")
+
+    # ---------- 3. Monthly price trend (if date available) ----------
+    if 'YearMonth' in df.columns:
+        st.subheader("📈 Monthly Price Trend")
+        monthly = df.groupby('YearMonth')['Price_Millions'].mean().reset_index()
+        monthly = monthly.sort_values('YearMonth')
+        fig3, ax3 = plt.subplots(figsize=(10,5))
+        ax3.plot(monthly['YearMonth'], monthly['Price_Millions'], marker='o')
+        ax3.set_xticks(monthly['YearMonth'][::3])  # label every 3rd month
+        ax3.set_xticklabels(monthly['YearMonth'][::3], rotation=45, ha='right')
+        ax3.set_ylabel("Average Price (Millions KSh)")
+        ax3.set_title("Average House Price Over Time")
+        st.pyplot(fig3)
+    else:
+        st.info("Date information not available – cannot show monthly trend.")
+
+    # ---------- 4. Amenity impact ----------
+    st.subheader("⭐ Amenity Impact on Price")
+    # If we have saved amenity coefficients from Day 3, load them. Otherwise compute a simple version.
+    # For simplicity, we'll create a bar chart of median price for properties with/without top amenities.
+    # But that's crude. Better to use the OLS coefficients from Day 3.
+    # Let's attempt to load pre‑computed amenity coefficients from a file.
+    AMENITY_COEF_PATH = 'models/amenity_coefficients.csv'
+    if os.path.exists(AMENITY_COEF_PATH):
+        amen_coef = pd.read_csv(AMENITY_COEF_PATH)
+        fig4, ax4 = plt.subplots(figsize=(10,6))
+        ax4.barh(amen_coef['Amenity'], amen_coef['Coefficient'], color='salmon', edgecolor='black')
+        ax4.set_xlabel("Price Impact (M KSh)")
+        ax4.set_title("Amenity Value Impact (Controlled for Size & Location)")
+        ax4.invert_yaxis()
+        st.pyplot(fig4)
+    else:
+        # Fallback: show top amenities by frequency and median price
+        st.markdown("""
+        **Note:** For precise amenity impact, we would need a regression model with amenity dummies.
+        Below is a simple frequency chart of the most common amenities.
         """)
+        if 'Amenities' in df.columns:
+            from collections import Counter
+            all_amenities = []
+            for x in df['Amenities'].dropna():
+                if isinstance(x, list):
+                    all_amenities.extend(x)
+                elif isinstance(x, str):
+                    all_amenities.extend([a.strip() for a in x.split(',')])
+            top_amens = Counter(all_amenities).most_common(10)
+            amen_df = pd.DataFrame(top_amens, columns=['Amenity', 'Count'])
+            st.dataframe(amen_df, use_container_width=True)
+        else:
+            st.warning("Amenities column not found.")
+
+    # ---------- 5. Additional: correlation heatmap ----------
+    st.subheader("🔗 Correlation Matrix")
+    numeric_cols = ['Price_Millions', 'Size_SQM', 'Bedrooms_Num', 'Bathrooms_Num', 'Amenity_Count']
+    numeric_df = df[numeric_cols].dropna()
+    if len(numeric_df) > 0:
+        fig5, ax5 = plt.subplots(figsize=(8,6))
+        sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', ax=ax5)
+        ax5.set_title("Correlation Between Numeric Features")
+        st.pyplot(fig5)
+    else:
+        st.warning("Not enough numeric data for correlation.")
+
+    st.markdown("---")
+    st.caption("Dashboard built with Streamlit. Data from BuyRentKenya (359 listings).")
+
+# ------------------------------
+# Footer (common)
+# ------------------------------
+st.sidebar.markdown("---")
+st.sidebar.info(
+    "**Project:** Nairobi House Price Prediction 6‑Day Sprint\n\n"
+    "**Model:** XGBoost with log transform\n\n"
+    "**MAE:** {:.2f}M KSh".format(mae_millions)
+)
 
 # ------------------------------
 # Footer
