@@ -95,7 +95,7 @@ if page == " Price Predictor":
                                             help="Count of listed amenities – note: this feature had near‑zero importance in our model")
         location = st.selectbox("Location", options=["Other"] + TOP_LOCATIONS,
                                 help="Select the neighborhood. 'Other' means the location is not in the top 10 most common areas.")
-        submitted = st.form_submit_button("💰 Predict Price")
+        submitted = st.form_submit_button("Predict Price")
 
     if submitted:
         # Build feature vector
@@ -126,7 +126,7 @@ if page == " Price Predictor":
         st.caption(f"Range based on MAE of {mae_millions:.2f}M KSh (approx. 68% confidence).")
 
         # Feature importance
-        st.subheader("🔍 What Drives This Price?")
+        st.subheader("What Drives This Price?")
         importances = model.feature_importances_
         imp_df = pd.DataFrame({'Feature': FEATURE_COLS, 'Importance': importances})
         imp_df = imp_df.sort_values('Importance', ascending=False).head(8)
@@ -151,7 +151,7 @@ elif page == " Market Dashboard":
         st.stop()
 
     # ---------- 1. Median price by location ----------
-    st.subheader("🏘️ Median Price by Location")
+    st.subheader("Median Price by Location")
     loc_median = df.groupby('Location')['Price_Millions'].median().sort_values(ascending=False).head(15)
     fig, ax = plt.subplots(figsize=(10,6))
     loc_median.plot(kind='bar', ax=ax, color='skyblue', edgecolor='black')
@@ -162,7 +162,7 @@ elif page == " Market Dashboard":
     st.caption("The most expensive areas are Karen, Runda, Lavington, Loresho, etc.")
 
     # ============= 2. Price per sqm by location ========================
-    st.subheader("📏 Price per Square Meter by Location")
+    st.subheader("Price per Square Meter by Location")
     df['Price_per_SQM'] = df['Price_Millions'] / df['Size_SQM'] * 1_000_000  # KSh per sqm
     ppsqm_median = df.groupby('Location')['Price_per_SQM'].median().sort_values(ascending=False).head(15)
     fig2, ax2 = plt.subplots(figsize=(10,6))
@@ -175,7 +175,7 @@ elif page == " Market Dashboard":
 
     # ---------- 3. Monthly price trend (if date available) ----------
     if 'YearMonth' in df.columns:
-        st.subheader("📈 Monthly Price Trend")
+        st.subheader(" Monthly Price Trend")
         monthly = df.groupby('YearMonth')['Price_Millions'].mean().reset_index()
         monthly = monthly.sort_values('YearMonth')
         fig3, ax3 = plt.subplots(figsize=(10,5))
@@ -189,7 +189,7 @@ elif page == " Market Dashboard":
         st.info("Date information not available – cannot show monthly trend.")
 
     # ---------- 4. Amenity impact ----------
-    st.subheader("⭐ Amenity Impact on Price")
+    st.subheader("Amenity Impact on Price")
     # If we have saved amenity coefficients from Day 3, load them. Otherwise compute a simple version.
     # For simplicity, we'll create a bar chart of median price for properties with/without top amenities.
     # But that's crude. Better to use the OLS coefficients from Day 3.
