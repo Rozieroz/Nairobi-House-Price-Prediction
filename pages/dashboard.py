@@ -8,7 +8,7 @@ st.set_page_config(page_title="Nairobi Property Market Dashboard", layout="wide"
 
 @st.cache_data
 def load_data():
-    return pd.read_csv('data/clean_listings.csv')
+    return pd.read_csv('../data/clean_listings.csv')
 
 df = load_data()
 
