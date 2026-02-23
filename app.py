@@ -119,7 +119,7 @@ if submitted:
     # ------------------------------
     # Display results
     # ------------------------------
-    st.success("### 📊 Prediction Results")
+    st.success("###Prediction Results: ")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Estimated Price", f"KSh {pred_ksh:,.0f}")
@@ -136,7 +136,7 @@ if submitted:
     # ------------------------------
     # What drives the price? (using XGBoost feature importance)
     # ------------------------------
-    st.subheader("🔍 What Drives This Price?")
+    st.subheader("What Drives This Price?")
     importances = model.feature_importances_
     imp_df = pd.DataFrame({
         'Feature': feature_cols,
@@ -153,7 +153,7 @@ if submitted:
     """)
 
     # Optional: simple note about the data
-    with st.expander("ℹ️ About the data & model"):
+    with st.expander("ℹ About the data & model"):
         st.markdown(f"""
         - **Training data:** 359 listings scraped from BuyRentKenya.
         - **Model:** XGBoost with log‑transformed target (to handle skewed prices).
