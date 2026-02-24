@@ -35,7 +35,7 @@ for loc in top_locs:
 
 feature_cols = ['Size_SQM', 'Bedrooms_Num', 'Bathrooms_Num', 'Amenity_Count'] + [f'Loc_{loc}' for loc in top_locs]
 X = df[feature_cols].fillna(0)
-y = np.log(df['Price_Millions'])    # log will transform target for better modeling 
+y = np.log(df['Price_Millions'])    # log will transform target for better modeling
 
 print("Feature matrix shape:", X.shape)
 
@@ -44,28 +44,36 @@ print("Feature matrix shape:", X.shape)
 # Split data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+# convert test target back once for evaluation use
+y_test_real = np.exp(y_test)
+
 # %%
 # ==========================================================================
 # TRAINING RANDOM FOREST - fine-tuning for later
 rf = RandomForestRegressor(n_estimators=100, random_state=42)
 rf.fit(X_train, y_train)
 
-# Predictions
-y_pred_train_rf = rf.predict(X_train)
-y_pred_test_rf = rf.predict(X_test)
+# Predictions (log space)
+y_pred_train_rf_log = rf.predict(X_train)
+y_pred_test_rf_log = rf.predict(X_test)
 
-# Evaluate
-mae_train_rf = mean_absolute_error(y_train, y_pred_train_rf)
-rmse_train_rf = np.sqrt(mean_squared_error(y_train, y_pred_train_rf))
-r2_train_rf = r2_score(y_train, y_pred_train_rf)
+# (convert back to real price space)
+y_pred_train_rf = np.exp(y_pred_train_rf_log)
+y_pred_test_rf = np.exp(y_pred_test_rf_log)
+y_train_real = np.exp(y_train)
 
-mae_test_rf = mean_absolute_error(y_test, y_pred_test_rf)
-rmse_test_rf = np.sqrt(mean_squared_error(y_test, y_pred_test_rf))
-r2_test_rf = r2_score(y_test, y_pred_test_rf)
+# Evaluate (REAL price space)
+mae_train_rf = mean_absolute_error(y_train_real, y_pred_train_rf)
+rmse_train_rf = np.sqrt(mean_squared_error(y_train_real, y_pred_train_rf))
+r2_train_rf = r2_score(y_train_real, y_pred_train_rf)
+
+mae_test_rf = mean_absolute_error(y_test_real, y_pred_test_rf)
+rmse_test_rf = np.sqrt(mean_squared_error(y_test_real, y_pred_test_rf))
+r2_test_rf = r2_score(y_test_real, y_pred_test_rf)
 
 print("Random Forest Performance:")
-print(f"Train MAE: {mae_train_rf:.2f}M, RMSE: {rmse_train_rf:.2f}M, R²: {r2_train_rf:.3f}")
-print(f"Test MAE: {mae_test_rf:.2f}M, RMSE: {rmse_test_rf:.2f}M, R²: {r2_test_rf:.3f}")
+print(f"Train MAE: {mae_train_rf:.2f}, RMSE: {rmse_train_rf:.2f}, R²: {r2_train_rf:.3f}")
+print(f"Test MAE: {mae_test_rf:.2f}, RMSE: {rmse_test_rf:.2f}, R²: {r2_test_rf:.3f}")
 
 # %%
 # Hyperparameter tuning with GridSearchCV - data is small but will help improve performance
@@ -81,13 +89,16 @@ grid_rf.fit(X_train, y_train)
 print("Best parameters:", grid_rf.best_params_)
 best_rf = grid_rf.best_estimator_
 
-# Evaluate tuned model
-y_pred_test_rf_tuned = best_rf.predict(X_test)
-mae_test_rf_tuned = mean_absolute_error(y_test, y_pred_test_rf_tuned)
-rmse_test_rf_tuned = np.sqrt(mean_squared_error(y_test, y_pred_test_rf_tuned))
-r2_test_rf_tuned = r2_score(y_test, y_pred_test_rf_tuned)
+# Evaluate tuned model (REAL space)
+y_pred_test_rf_tuned_log = best_rf.predict(X_test)
+y_pred_test_rf_tuned = np.exp(y_pred_test_rf_tuned_log)
 
-print(f"Tuned RF Test MAE: {mae_test_rf_tuned:.2f}M, RMSE: {rmse_test_rf_tuned:.2f}M, R²: {r2_test_rf_tuned:.3f}")
+mae_test_rf_tuned = mean_absolute_error(y_test_real, y_pred_test_rf_tuned)
+rmse_test_rf_tuned = np.sqrt(mean_squared_error(y_test_real, y_pred_test_rf_tuned))
+r2_test_rf_tuned = r2_score(y_test_real, y_pred_test_rf_tuned)
+
+print(f"Tuned RF Test MAE: {mae_test_rf_tuned:.2f}, RMSE: {rmse_test_rf_tuned:.2f}, R²: {r2_test_rf_tuned:.3f}")
+
 
 # %%
 # =============================================================
@@ -97,16 +108,23 @@ print(f"Tuned RF Test MAE: {mae_test_rf_tuned:.2f}M, RMSE: {rmse_test_rf_tuned:.
 xgb_model = xgb.XGBRegressor(objective='reg:squarederror', random_state=42, n_estimators=100)
 xgb_model.fit(X_train, y_train)
 
-y_pred_train_xgb = xgb_model.predict(X_train)
-y_pred_test_xgb = xgb_model.predict(X_test)
 
-mae_train_xgb = mean_absolute_error(y_train, y_pred_train_xgb)
-rmse_train_xgb = np.sqrt(mean_squared_error(y_train, y_pred_train_xgb))
-r2_train_xgb = r2_score(y_train, y_pred_train_xgb)
+# Predict on train set
+y_pred_train_xgb_log = xgb_model.predict(X_train)
+y_pred_train_xgb = np.exp(y_pred_train_xgb_log)
 
-mae_test_xgb = mean_absolute_error(y_test, y_pred_test_xgb)
-rmse_test_xgb = np.sqrt(mean_squared_error(y_test, y_pred_test_xgb))
-r2_test_xgb = r2_score(y_test, y_pred_test_xgb)
+# Predict on test set
+y_pred_test_xgb_log = xgb_model.predict(X_test)
+y_pred_test_xgb = np.exp(y_pred_test_xgb_log)
+
+# Evaluate XGBoost (REAL price space)
+mae_train_xgb = mean_absolute_error(np.exp(y_train), y_pred_train_xgb)
+rmse_train_xgb = np.sqrt(mean_squared_error(np.exp(y_train), y_pred_train_xgb))
+r2_train_xgb = r2_score(np.exp(y_train), y_pred_train_xgb)
+
+mae_test_xgb = mean_absolute_error(y_test_real, y_pred_test_xgb)
+rmse_test_xgb = np.sqrt(mean_squared_error(y_test_real, y_pred_test_xgb))
+r2_test_xgb = r2_score(y_test_real, y_pred_test_xgb)
 
 print("\nXGBoost Performance:")
 print(f"Train MAE: {mae_train_xgb:.2f}M, RMSE: {rmse_train_xgb:.2f}M, R²: {r2_train_xgb:.3f}")
@@ -118,25 +136,30 @@ print(f"Test MAE: {mae_test_xgb:.2f}M, RMSE: {rmse_test_xgb:.2f}M, R²: {r2_test
 lr = LinearRegression()
 lr.fit(X_train, y_train)
 
-# Predictions
-y_pred_test_lr = lr.predict(X_test)
+# Predictions (log)
+y_pred_test_lr_log = lr.predict(X_test)
 
-# Metrics
-mae_test_lr = mean_absolute_error(y_test, y_pred_test_lr)
-rmse_test_lr = np.sqrt(mean_squared_error(y_test, y_pred_test_lr))
-r2_test_lr = r2_score(y_test, y_pred_test_lr)
+# >>>  (convert back)
+y_pred_test_lr = np.exp(y_pred_test_lr_log)
+y_test_real = np.exp(y_test)
+
+# Metrics (REAL space)
+mae_test_lr = mean_absolute_error(y_test_real, y_pred_test_lr)
+rmse_test_lr = np.sqrt(mean_squared_error(y_test_real, y_pred_test_lr))
+r2_test_lr = r2_score(y_test_real, y_pred_test_lr)
 
 print("\nLinear Regression Performance:")
-print(f"Test MAE: {mae_test_lr:.2f}M, RMSE: {rmse_test_lr:.2f}M, R²: {r2_test_lr:.3f}")
+print(f"Test MAE: {mae_test_lr:.2f}, RMSE: {rmse_test_lr:.2f}, R²: {r2_test_lr:.3f}")
+
 
 # %%
 # =======================================================================================================
-
 # COMPARE ALL MODELS - on table - use tuned RF values for fair comparison
+
 comparison = pd.DataFrame({
     'Model': ['Linear Regression', 'Random Forest', 'Tuned Random Forest', 'XGBoost'],
-    'Test MAE (M KSh)': [mae_test_lr, mae_test_rf, mae_test_rf_tuned, mae_test_xgb],
-    'Test RMSE (M KSh)': [rmse_test_lr, rmse_test_rf, rmse_test_rf_tuned, rmse_test_xgb],
+    'Test MAE (Millions KSh)': [mae_test_lr, mae_test_rf, mae_test_rf_tuned, mae_test_xgb],
+    'Test RMSE (Millions KSh)': [rmse_test_lr, rmse_test_rf, rmse_test_rf_tuned, rmse_test_xgb],
     'Test R²': [r2_test_lr, r2_test_rf, r2_test_rf_tuned, r2_test_xgb]
 })
 print(comparison)
@@ -247,11 +270,12 @@ plt.show()
 If scattered widely → weak model
 """
 
-plt.figure(figsize=(6,6))
-plt.scatter(y_test, y_pred_test_lr)
-plt.plot([y_test.min(), y_test.max()],
-         [y_test.min(), y_test.max()],
-         'r--')
+plt.figure(figsize=(6,4))
+plt.scatter(y_test_real, y_pred_test_lr, alpha=0.5)
+lims = [0, max(y_test_real.max(), y_pred_test_lr.max()) * 1.05]
+plt.plot(lims, lims, 'r--')
+plt.xlim(lims)
+plt.ylim(lims)
 plt.xlabel("Actual Price (M KSh)")
 plt.ylabel("Predicted Price (M KSh)")
 plt.title("Linear Regression: Actual vs Predicted Prices")
@@ -264,10 +288,10 @@ plt.show()
 Or patterned (bad → model missing nonlinear relationships)
 """
 
-residuals = y_test - y_pred_test_lr
+residuals = y_test_real - y_pred_test_lr
 
-plt.figure(figsize=(6,6))
-plt.scatter(y_pred_test_lr, residuals)
+plt.figure(figsize=(6,4))
+plt.scatter(y_pred_test_lr, residuals, alpha=0.5)
 plt.axhline(0, color='r', linestyle='--')
 plt.xlabel("Predicted Price (M KSh)")
 plt.ylabel("Residuals")
@@ -275,18 +299,21 @@ plt.title("Residuals vs Predicted Prices (Linear Regression)")
 plt.tight_layout()
 plt.show()
 
-# %%
-models = {
-    "Linear Regression": r2_test_lr,
-    "Random Forest": r2_test_rf,
-    "Tuned Random Forest": r2_test_rf_tuned,
-    "XGBoost": r2_test_xgb
-}
 
-best_model = max(models, key=models.get)
+# Top absolute errors
+results = pd.DataFrame({'Actual': y_test_real, 'Predicted': y_pred_test_lr})
+results['AbsError'] = (results['Predicted'] - results['Actual']).abs()
+top5 = results.sort_values('AbsError', ascending=False).head(5)
+print('\nTop 5 largest absolute errors (test set):')
+print(top5)
 
-print(f"\n Best Performing Model: {best_model}")
-print(f"With Test R² of: {models[best_model]:.3f}")
+# Show original rows for these outliers (if df still available)
+if 'df' in globals():
+    print('\nOriginal rows for top 5 errors:')
+    display(df.loc[top5.index, ['Price_Millions','Location','Size_SQM','Bedrooms_Num','Bathrooms_Num']])
+else:
+    print('\nOriginal DataFrame `df` not available in this namespace.')
+
 
 # %%
 # ==============================================================================
@@ -311,7 +338,7 @@ best_model_rmse = model_objects[best_model_name][1]
 
 print("\n" + "="*50)
 print(f"Best Performing Model LOWEST RMSE: {best_model_name}")
-print(f"Test RMSE: {best_model_rmse:.2f}M KSh")
+print(f"Test RMSE: {best_model_rmse:.2f} Million KSh")
 print("="*50)
 
 # Save automatically
@@ -320,12 +347,27 @@ joblib.dump(best_model_object, model_path)
 
 print(f"\nBest model saved automatically at: {model_path}")
 
-# %% [markdown]
-# - Although Random Forest achieved a slightly lower MAE, Linear Regression had a much lower RMSE (21.89M vs 27–29M). 
-# - RMSE penalizes large prediction errors more heavily and is measured in millions of KSh, thus it provides a more intuitive and business-relevant evaluation metric. 
-# 
-# - For house price prediction, minimizing large pricing mistakes is more important than marginal improvements in variance explained. 
-# 
-# - Therefore, the model with the lowest RMSE (Linear Regression) was selected.
+
+# %%
+
+# (Save correct MAE of BEST model in real price space)
+
+mae_objects = {
+    "Linear Regression": (lr, mae_test_lr),
+    "Random Forest": (rf, mae_test_rf),
+    "Tuned Random Forest": (best_rf, mae_test_rf_tuned),
+    "XGBoost": (xgb_model, mae_test_xgb)
+}
+
+best_mae_model_name = min(mae_objects, key=lambda x: mae_objects[x][1])
+best_mae_model_object = mae_objects[best_mae_model_name][0]
+best_mae_value = mae_objects[best_mae_model_name][1]
+
+print(f"Best MAE Model: {best_mae_model_name} with MAE = {best_mae_value:.2f}M KSh")
+
+# Save the best MAE value for reference
+model_path_mae = f"../models/{best_mae_model_name.replace(' ', '_').lower()}_mae.pkl"
+joblib.dump(best_mae_value, model_path_mae)
+print(f"Best model MAE saved at: {model_path_mae}")
 
 
